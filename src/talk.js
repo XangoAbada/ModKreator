@@ -50,10 +50,16 @@ function bubble(text, me) {
 
 function say(text) { bubble(text); speak(text); }
 
-// ponytail: echo zamiast AI – pętlę tworzenia podłączy tu T-10
-function ask(text) {
+// Pętla tworzenia (T-10): prośba idzie do Claude Code, odpowiedź czyta lektor. Postęp mówi mod:progress (index.html).
+async function ask(text) {
   bubble(text, true);
-  say(`Słyszę: „${text}”. Już niedługo nauczę się to budować!`);
+  setSpeakBtn('⏳', 'Buduję…', true);
+  try { say(await window.mod.change(text)); }
+  catch (e) {
+    console.error(e);
+    say('Coś nie wyszło. Poproś dorosłego o pomoc.');
+  }
+  setSpeakBtn('🎤', 'Mów');
 }
 
 function setSpeakBtn(icon, label, disabled = false) {
@@ -79,7 +85,7 @@ speakBtn.onclick = async () => {
       const audio = await ctx.decodeAudioData(await new Blob(chunks).arrayBuffer());
       ctx.close();
       const text = await window.voice.transcribe(audio.getChannelData(0)); // mikrofon: pierwszy kanał wystarczy
-      text ? ask(text) : say('Nic nie słychać. Naciśnij „Mów” i powiedz jeszcze raz.');
+      text ? await ask(text) : say('Nic nie słychać. Naciśnij „Mów” i powiedz jeszcze raz.');
     } catch (e) {
       console.error(e);
       say('Nie udało się posłuchać. Poproś dorosłego o pomoc.');

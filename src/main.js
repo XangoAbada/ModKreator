@@ -8,10 +8,15 @@ ipcMain.handle('tools:install', (e, id) => tools.install(id, pct => e.sender.sen
 ipcMain.handle('voice:transcribe', (_e, samples) => voice.transcribe(samples));
 ipcMain.handle('voice:speak', (_e, text) => voice.synthesize(text));
 
-// Mod dziecka (T-9)
+// Mod dziecka (T-9) i pętla tworzenia z Claude Code (T-10)
 const mod = require('./mod');
+const { change } = require('./claude');
 const modSay = e => (text, detail) => e.sender.send('mod:progress', text, detail);
-for (const step of ['create', 'build', 'install', 'play']) ipcMain.handle(`mod:${step}`, e => mod[step](modSay(e)));
+// ponytail: jedna kolejka – git, Gradle i Claude w folderze moda nigdy nie działają naraz
+let busy = Promise.resolve();
+const queue = fn => (busy = busy.catch(() => {}).then(fn));
+for (const step of ['create', 'build', 'install', 'play', 'undo']) ipcMain.handle(`mod:${step}`, e => queue(() => mod[step](modSay(e))));
+ipcMain.handle('mod:change', (e, text) => queue(() => change(String(text), modSay(e))));
 
 app.whenReady().then(() => {
   const win = new BrowserWindow({
