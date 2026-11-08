@@ -16,6 +16,7 @@ const LAUNCHER_EXES = [
 ];
 const CLAUDE_EXE = path.join(HOME, '.local', 'bin', 'claude.exe'); // natywny instalator; PATH aplikacji może być stary
 const WHISPER_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin'; // small: sensowny polski, ~470 MB
+const GRADLE_JDK = 25; // ponytail: Loom 1.19 (szablon moda, T-9) wymaga JDK 25 do Gradle także dla starszych gier; podbić, gdy Loom podbije
 
 const dataDir = () => require('electron').app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
@@ -108,7 +109,7 @@ async function checkAll() {
   const launcherExe = LAUNCHER_EXES.find(f => fs.existsSync(f)) || null;
   const game = minecraftVersions()[0] || null;
   const need = game?.java || 21;
-  const javaHome = pickJdk(await jdkCandidates(), need);
+  const javaHome = pickJdk(await jdkCandidates(), Math.max(need, GRADLE_JDK));
   const fabricId = game && fabricVersionId(game.id);
   saveConfig({
     minecraftDir: MC_DIR, minecraftVersion: game?.id || null, launcherExe, launcherAppx,
@@ -125,7 +126,7 @@ async function checkAll() {
 
   const java = javaHome
     ? ok('java', `Jest! Java ${jdkMajor(javaHome)}`)
-    : auto('java', `Brakuje Javy ${need}. Pobrać?`);
+    : auto('java', `Brakuje Javy ${Math.max(need, GRADLE_JDK)}. Pobrać?`);
 
   const fabric = !game ? blocked('fabric', 'Najpierw potrzebny Minecraft.')
     : fabricId ? ok('fabric', 'Jest!')
@@ -169,7 +170,7 @@ async function checkWhisper() {
 
 const installers = {
   async java(progress) {
-    const need = readConfig().javaVersion || 21;
+    const need = Math.max(readConfig().javaVersion || 21, GRADLE_JDK);
     const zip = path.join(os.tmpdir(), `modkreator-jdk-${need}.zip`);
     const dir = path.join(dataDir(), 'jdk');
     await download(`https://api.adoptium.net/v3/binary/latest/${need}/ga/windows/x64/jdk/hotspot/normal/eclipse`, zip, progress);
@@ -208,4 +209,4 @@ async function install(id, progress) {
   await installers[id](progress);
 }
 
-module.exports = { checkAll, install, readConfig, minecraftVersions, jdkMajor, pickJdk };
+module.exports = { checkAll, install, readConfig, minecraftVersions, jdkMajor, pickJdk, download, run };
