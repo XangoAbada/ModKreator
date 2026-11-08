@@ -1,16 +1,43 @@
 // Rozmowa (T-8), w rendererze: lektor i przycisk „Mów”.
-// speak(text) – czyta na głos polskim głosem Windows (np. Paulina) przez speechSynthesis.
+// speak(text) – czyta na głos: Piper (głos mc_speech), a bez niego polski głos Windows (np. Paulina).
 // say(text) – odpowiedź aplikacji: dymek + lektor. ask(text) – prośba dziecka (z głosu, później z czatu T-13).
 const talkList = document.querySelector('#talk .talk');
 const speakBtn = document.getElementById('speak');
 
+// Zapas, gdy Piper niedostępny lub zawiedzie: głos systemowy Windows.
 // ponytail: bez fallbacku przez PowerShell – Chromium na Windows i tak bierze głosy SAPI (te same co System.Speech)
-function speak(text) {
-  speechSynthesis.cancel();
+function systemSpeak(text) {
   const u = new SpeechSynthesisUtterance(text);
   u.lang = 'pl-PL';
   u.voice = speechSynthesis.getVoices().find(v => v.lang === 'pl-PL') || null;
   speechSynthesis.speak(u);
+}
+
+// Lektor (T-87): Piper (głos mc_speech) z procesu głównego; nowa wypowiedź przerywa poprzednią.
+const audioCtx = new AudioContext();
+let playing = null, speechId = 0;
+function stopSpeaking() {
+  speechId++;
+  speechSynthesis.cancel();
+  playing?.stop();
+  playing = null;
+}
+
+async function speak(text) {
+  stopSpeaking();
+  const id = speechId;
+  try {
+    const wav = await window.voice.speak(text); // null bez Pipera → catch → głos systemowy
+    const buf = await audioCtx.decodeAudioData(wav.buffer.slice(wav.byteOffset, wav.byteOffset + wav.byteLength));
+    if (id !== speechId) return; // w międzyczasie przyszła nowsza wypowiedź
+    await audioCtx.resume();
+    playing = audioCtx.createBufferSource();
+    playing.buffer = buf;
+    playing.connect(audioCtx.destination);
+    playing.start();
+  } catch {
+    if (id === speechId) systemSpeak(text);
+  }
 }
 
 function bubble(text, me) {
@@ -40,7 +67,7 @@ speakBtn.onclick = async () => {
   let stream;
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
   catch { return say('Nie słyszę mikrofonu. Poproś dorosłego o pomoc.'); }
-  speechSynthesis.cancel(); // nie nagrywaj lektora
+  stopSpeaking(); // nie nagrywaj lektora
   const rec = recorder = new MediaRecorder(stream), chunks = [];
   rec.ondataavailable = e => chunks.push(e.data);
   rec.onstop = async () => {

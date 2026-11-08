@@ -18,6 +18,9 @@ const CLAUDE_EXE = path.join(HOME, '.local', 'bin', 'claude.exe'); // natywny in
 const WHISPER_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin'; // small: sensowny polski, ~470 MB
 const GRADLE_JDK = 25; // ponytail: Loom 1.19 (szablon moda, T-9) wymaga JDK 25 do Gradle także dla starszych gier; podbić, gdy Loom podbije
 const WHISPER_BIN_URL = 'https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip'; // whisper-cli.exe (CPU) + dll
+// Lektor (T-87): Piper (MIT, samodzielny exe bez Pythona) + polski głos mc_speech (CC0)
+const PIPER_BIN_URL = 'https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_windows_amd64.zip'; // piper/piper.exe + dll + espeak-ng-data
+const PIPER_VOICE_URL = 'https://huggingface.co/rhasspy/piper-voices/resolve/main/pl/pl_PL/mc_speech/medium/pl_PL-mc_speech-medium.onnx'; // ~63 MB, + .json obok
 
 const dataDir = () => require('electron').app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
@@ -134,8 +137,8 @@ async function checkAll() {
     : !javaHome ? blocked('fabric', 'Najpierw potrzebna Java.')
     : auto('fabric', 'Brakuje Fabrica. Zamknij grę i kliknij: pobrać?');
 
-  const [claude, codex, whisper] = await Promise.all([checkClaude(), checkCodex(), checkWhisper()]);
-  return [minecraft, java, fabric, claude, codex, whisper];
+  const [claude, codex, whisper, piper] = await Promise.all([checkClaude(), checkCodex(), checkWhisper(), checkPiper()]);
+  return [minecraft, java, fabric, claude, codex, whisper, piper];
 }
 
 const claudeCmd = () => fs.existsSync(CLAUDE_EXE) ? `"${CLAUDE_EXE}"` : 'claude';
@@ -174,7 +177,35 @@ async function checkWhisper() {
   return auto('whisper', 'Brakuje słuchania. Pobrać?');
 }
 
+const piperPaths = () => ({
+  exe: path.join(dataDir(), 'piper', 'piper', 'piper.exe'),
+  voice: path.join(dataDir(), 'piper', 'pl_PL-mc_speech-medium.onnx'),
+});
+
+// Opcjonalny: bez Pipera lektor mówi głosem systemowym Windows.
+async function checkPiper() {
+  const { exe, voice } = piperPaths();
+  const has = fs.existsSync(exe) && fs.existsSync(voice) && fs.existsSync(voice + '.json');
+  saveConfig({ piperExe: has ? exe : null, piperVoice: has ? voice : null });
+  return { ...(has ? ok('piper', 'Jest!') : auto('piper', 'Ładniejszy głos lektora. Nie musi być. Pobrać?')), optional: true };
+}
+
 const installers = {
+  async piper(progress) {
+    const { exe, voice } = piperPaths();
+    if (!fs.existsSync(exe)) {
+      const zip = path.join(os.tmpdir(), 'modkreator-piper.zip');
+      await download(PIPER_BIN_URL, zip, progress);
+      const dir = path.dirname(path.dirname(exe)); // zip ma w środku folder piper/
+      fs.mkdirSync(dir, { recursive: true });
+      const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+      const r = await run(`"${tar}" -xf "${zip}" -C "${dir}"`, 300000);
+      fs.rmSync(zip, { force: true });
+      if (!r.ok) throw new Error(r.out);
+    }
+    if (!fs.existsSync(voice + '.json')) await download(PIPER_VOICE_URL + '.json', voice + '.json', () => {});
+    if (!fs.existsSync(voice)) await download(PIPER_VOICE_URL, voice, progress);
+  },
   async java(progress) {
     const need = Math.max(readConfig().javaVersion || 21, GRADLE_JDK);
     const zip = path.join(os.tmpdir(), `modkreator-jdk-${need}.zip`);

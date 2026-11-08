@@ -16,4 +16,5 @@ contextBridge.exposeInMainWorld('mod', {
 
 contextBridge.exposeInMainWorld('voice', {
   transcribe: samples => ipcRenderer.invoke('voice:transcribe', samples), // Float32Array 16 kHz mono → tekst
+  speak: text => ipcRenderer.invoke('voice:speak', text), // tekst → WAV (Piper, Uint8Array) albo null bez Pipera
 });

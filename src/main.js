@@ -6,6 +6,7 @@ const voice = require('./voice');
 ipcMain.handle('tools:check', () => tools.checkAll());
 ipcMain.handle('tools:install', (e, id) => tools.install(id, pct => e.sender.send('tools:progress', id, pct)));
 ipcMain.handle('voice:transcribe', (_e, samples) => voice.transcribe(samples));
+ipcMain.handle('voice:speak', (_e, text) => voice.synthesize(text));
 
 // Mod dziecka (T-9)
 const mod = require('./mod');
