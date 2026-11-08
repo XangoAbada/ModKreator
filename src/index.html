@@ -102,7 +102,7 @@
       <div id="mod-status" class="info"></div>
       <div class="row">
         <button id="play" class="green"><span class="icon">🎮</span>Zagraj</button>
-        <button class="red"><span class="icon">↩️</span>Cofnij</button>
+        <button id="undo" class="red"><span class="icon">↩️</span>Cofnij</button>
       </div>
     </section>
   </main>
@@ -184,8 +184,9 @@
   document.getElementById('recheck').onclick = check;
   check();
 
-  // Mój mod (T-9): Zagraj = utwórz mod (raz), zbuduj, zainstaluj, otwórz launcher
+  // Mój mod (T-9): Zagraj = utwórz mod (raz), zbuduj, zainstaluj, otwórz launcher; Cofnij (T-10) = bez ostatniej zmiany
   const playBtn = document.getElementById('play');
+  const undoBtn = document.getElementById('undo');
   const modStatus = document.getElementById('mod-status');
   let modSpoken = '';
   const setModStatus = (text, detail) => {
@@ -194,11 +195,10 @@
     if (detail) modStatus.append(Object.assign(document.createElement('small'), { textContent: detail }));
   };
   window.mod.onProgress(setModStatus);
-  playBtn.onclick = async () => {
-    playBtn.disabled = true;
+  const modAction = async (btn, work) => {
+    btn.disabled = true;
     try {
-      for (const step of ['create', 'build', 'install', 'play']) await window.mod[step]();
-      setModStatus('Minecraft się otwiera. Kliknij w nim „Graj”!');
+      setModStatus(await work());
     } catch (e) {
       setModStatus('Coś nie wyszło. Poproś dorosłego o pomoc.');
       const d = document.createElement('details');
@@ -206,8 +206,13 @@
       d.append(Object.assign(document.createElement('pre'), { textContent: e.message }));
       modStatus.append(d);
     }
-    playBtn.disabled = false;
+    btn.disabled = false;
   };
+  playBtn.onclick = () => modAction(playBtn, async () => {
+    for (const step of ['create', 'build', 'install', 'play']) await window.mod[step]();
+    return 'Minecraft się otwiera. Kliknij w nim „Graj”!';
+  });
+  undoBtn.onclick = () => modAction(undoBtn, () => window.mod.undo());
 </script>
 </body>
 </html>

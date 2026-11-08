@@ -114,8 +114,9 @@ function build(say = nop, dir = modDir(), cfg = readConfig()) {
     p.stdout.on('data', onData);
     p.stderr.on('data', onData);
     p.on('error', reject);
-    p.on('close', code => code === 0 ? resolve(dir)
-      : reject(new Error(`Gradle zakończył się błędem (kod ${code}):\n${tail.join('\n')}`)));
+    // buildLog: błędy Gradle'a, które pętla tworzenia (T-10) daje Claude'owi do naprawy
+    p.on('close', code => code === 0 ? resolve(dir) : reject(Object.assign(
+      new Error(`Gradle zakończył się błędem (kod ${code}):\n${tail.join('\n')}`), { buildLog: tail.join('\n') })));
   });
 }
 
@@ -144,6 +145,16 @@ async function install(say = nop, dir = modDir(), cfg = readConfig()) {
   return path.join(mods, jar);
 }
 
+// „Cofnij” (T-10): usuwa ostatnią zmianę (commit), pierwszego commita „Nowy mod” nie rusza; potem build i instalacja.
+async function undo(say = nop, dir = modDir()) {
+  if (!fs.existsSync(path.join(dir, '.git')) || Number(await git(dir, 'rev-list --count HEAD')) < 2) return 'Nie ma nic do cofnięcia.';
+  const what = await git(dir, 'log -1 --format=%s');
+  await git(dir, 'reset -q --hard HEAD~1');
+  await build(say, dir);
+  await install(say, dir);
+  return `Cofnięte: „${what}”.`;
+}
+
 // ponytail: oficjalny launcher nie ma opcji „uruchom grę z profilem” – otwieramy go z wybranym profilem Fabric,
 // dziecko klika „Graj”. Zmiana lastUsed nie zadziała, gdy launcher jest już otwarty (trzyma profile w pamięci).
 async function play(say = nop, cfg = readConfig()) {
@@ -164,4 +175,4 @@ async function play(say = nop, cfg = readConfig()) {
   } else throw new Error('Nie ma Minecraft Launchera – najpierw ekran Start.');
 }
 
-module.exports = { create, build, install, play, generate, pickVersions, templateVars, fill, pickJar, selectProfile };
+module.exports = { create, build, install, play, undo, git, modDir, generate, pickVersions, templateVars, fill, pickJar, selectProfile };
