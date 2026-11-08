@@ -17,6 +17,7 @@ const LAUNCHER_EXES = [
 const CLAUDE_EXE = path.join(HOME, '.local', 'bin', 'claude.exe'); // natywny instalator; PATH aplikacji może być stary
 const WHISPER_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin'; // small: sensowny polski, ~470 MB
 const GRADLE_JDK = 25; // ponytail: Loom 1.19 (szablon moda, T-9) wymaga JDK 25 do Gradle także dla starszych gier; podbić, gdy Loom podbije
+const WHISPER_BIN_URL = 'https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip'; // whisper-cli.exe (CPU) + dll
 
 const dataDir = () => require('electron').app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
@@ -162,9 +163,14 @@ async function checkCodex() {
       `Otwórz PowerShell, wpisz: codex login i zaloguj się kontem ChatGPT. ${AGAIN}`));
 }
 
+const whisperPaths = () => ({
+  model: path.join(dataDir(), 'whisper', 'ggml-small.bin'),
+  cli: path.join(dataDir(), 'whisper', 'Release', 'whisper-cli.exe'),
+});
+
 async function checkWhisper() {
-  const model = path.join(dataDir(), 'whisper', 'ggml-small.bin');
-  if (fs.existsSync(model)) { saveConfig({ whisperModel: model }); return ok('whisper', 'Jest!'); }
+  const { model, cli } = whisperPaths();
+  if (fs.existsSync(model) && fs.existsSync(cli)) { saveConfig({ whisperModel: model, whisperCli: cli }); return ok('whisper', 'Jest!'); }
   return auto('whisper', 'Brakuje słuchania. Pobrać?');
 }
 
@@ -200,7 +206,18 @@ const installers = {
     if (!r.ok) throw new Error(r.out);
   },
   async whisper(progress) {
-    await download(WHISPER_URL, path.join(dataDir(), 'whisper', 'ggml-small.bin'), progress);
+    const { model, cli } = whisperPaths();
+    if (!fs.existsSync(cli)) {
+      const zip = path.join(os.tmpdir(), 'modkreator-whisper.zip');
+      await download(WHISPER_BIN_URL, zip, progress);
+      const dir = path.dirname(path.dirname(cli)); // zip ma w środku folder Release/
+      fs.mkdirSync(dir, { recursive: true });
+      const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
+      const r = await run(`"${tar}" -xf "${zip}" -C "${dir}"`, 300000);
+      fs.rmSync(zip, { force: true });
+      if (!r.ok) throw new Error(r.out);
+    }
+    if (!fs.existsSync(model)) await download(WHISPER_URL, model, progress);
   },
 };
 

@@ -1,9 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const tools = require('./tools');
+const voice = require('./voice');
 
 ipcMain.handle('tools:check', () => tools.checkAll());
 ipcMain.handle('tools:install', (e, id) => tools.install(id, pct => e.sender.send('tools:progress', id, pct)));
+ipcMain.handle('voice:transcribe', (_e, samples) => voice.transcribe(samples));
 
 // Mod dziecka (T-9)
 const mod = require('./mod');

@@ -13,3 +13,7 @@ contextBridge.exposeInMainWorld('mod', {
   play: () => ipcRenderer.invoke('mod:play'),
   onProgress: cb => ipcRenderer.on('mod:progress', (_e, text, detail) => cb(text, detail)),
 });
+
+contextBridge.exposeInMainWorld('voice', {
+  transcribe: samples => ipcRenderer.invoke('voice:transcribe', samples), // Float32Array 16 kHz mono → tekst
+});

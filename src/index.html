@@ -84,12 +84,10 @@
       </div>
     </section>
 
-    <!-- Rozmowa: przycisk „mów” i lektor (logika w T-8, T-10) -->
+    <!-- Rozmowa: przycisk „mów” i lektor (logika w talk.js, T-10) -->
     <section id="talk" class="block">
       <div class="talk">
         <div class="bubble">🔊 Co dziś zbudujemy?</div>
-        <div class="bubble me">Chcę miecz, który strzela ogniem!</div>
-        <div class="bubble">🔊 Super pomysł! Już robię.</div>
       </div>
       <button id="speak" class="green"><span class="icon">🎤</span>Mów</button>
     </section>
@@ -109,6 +107,7 @@
     </section>
   </main>
 
+<script src="talk.js"></script>
 <script>
   function go(id) {
     document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === id));
@@ -159,6 +158,8 @@
     const results = await window.tools.check();
     for (const t of results)
       if (!installing.has(t.id)) document.getElementById('tool-' + t.id).replaceWith(renderTool(t));
+    if (document.getElementById('start').classList.contains('active'))
+      speak(results.filter(t => !t.ok && !t.optional).map(t => `${TOOLS[t.id][1]}: ${t.text}`).join(' ') || 'Wszystko gotowe! Kliknij Dalej.');
   }
 
   async function install(id, li) {
@@ -172,6 +173,7 @@
     } catch (e) {
       installing.delete(id);
       li.replaceWith(renderTool({ id, fix: 'adult', text: 'Coś nie wyszło. Poproś dorosłego o pomoc.', adult: e.message }));
+      speak('Coś nie wyszło. Poproś dorosłego o pomoc.');
     }
   }
 
@@ -185,7 +187,9 @@
   // Mój mod (T-9): Zagraj = utwórz mod (raz), zbuduj, zainstaluj, otwórz launcher
   const playBtn = document.getElementById('play');
   const modStatus = document.getElementById('mod-status');
+  let modSpoken = '';
   const setModStatus = (text, detail) => {
+    if (text !== modSpoken) speak(modSpoken = text); // lektor (T-8), bez powtórek przy liniach logu Gradle
     modStatus.textContent = text;
     if (detail) modStatus.append(Object.assign(document.createElement('small'), { textContent: detail }));
   };
