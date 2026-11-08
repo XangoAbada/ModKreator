@@ -38,4 +38,22 @@ async function transcribe(samples) {
   }
 }
 
-module.exports = { transcribe, wav, whisperArgs, cleanText };
+// Lektor (T-87): tekst → WAV przez Piper (głos mc_speech). Bez Pipera null, przy awarii błąd – renderer mówi wtedy głosem systemowym.
+const piperText = text => String(text).replace(/\s+/g, ' ').trim(); // Piper czyta stdin liniami: jedna linia = jeden plik
+
+let ttsId = 0;
+async function synthesize(text) {
+  const { piperExe, piperVoice } = readConfig();
+  if (!piperExe || !piperVoice) return null; // brak Pipera: renderer mówi głosem systemowym
+  const file = path.join(os.tmpdir(), `modkreator-tts-${process.pid}-${ttsId++}.wav`);
+  const job = promisify(execFile)(piperExe, ['--model', piperVoice, '--output_file', file], { windowsHide: true, timeout: 30000 });
+  job.child.stdin.end(piperText(text) + '\n', 'utf8');
+  try {
+    await job;
+    return fs.readFileSync(file);
+  } finally {
+    fs.rmSync(file, { force: true });
+  }
+}
+
+module.exports = { transcribe, wav, whisperArgs, cleanText, synthesize, piperText };
