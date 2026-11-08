@@ -1,0 +1,28 @@
+{
+  "name": "modkreator",
+  "productName": "ModKreator",
+  "version": "0.1.0",
+  "description": "Tworzenie modów do Minecrafta głosem, dla dzieci",
+  "main": "src/main.js",
+  "private": true,
+  "scripts": {
+    "dev": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "pl.modkreator.app",
+    "files": [
+      "src/**/*"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "signAndEditExecutable": false
+    }
+  },
+  "devDependencies": {
+    "electron": "^45.2.3",
+    "electron-builder": "^26.18.0"
+  }
+}

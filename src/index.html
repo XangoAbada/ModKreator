@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>ModKreator</title>
+<style>
+  :root {
+    --grass: #5d9c3a; --grass-dark: #3f6e26;
+    --dirt: #7a5232; --dirt-dark: #4e3420;
+    --stone: #8b8b8b; --stone-dark: #555;
+    --sky: #87c8f0; --text: #fff; --ink: #2b1d12;
+    --gold: #f2c230; --red: #c8442f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; height: 100vh; display: flex; flex-direction: column;
+    font: 700 22px/1.3 "Segoe UI", system-ui, sans-serif; color: var(--text);
+    background: linear-gradient(var(--sky) 0 55%, var(--grass) 55% 58%, var(--dirt) 58%);
+    user-select: none;
+  }
+  /* ponytail: pikselowy wygląd z CSS (ramki, cienie), bez assetów i fontów z Minecrafta */
+  .block {
+    background: var(--dirt); border: 4px solid var(--ink);
+    box-shadow: inset -6px -6px 0 var(--dirt-dark), inset 6px 6px 0 #9c6b44;
+  }
+  button {
+    font: inherit; color: var(--text); cursor: pointer;
+    min-height: 88px; padding: 12px 28px; border: 4px solid var(--ink);
+    background: var(--stone); text-shadow: 3px 3px 0 var(--ink);
+    box-shadow: inset -6px -6px 0 var(--stone-dark), inset 6px 6px 0 #b5b5b5;
+  }
+  button:hover { filter: brightness(1.12); }
+  button:active { box-shadow: inset 6px 6px 0 var(--stone-dark); }
+  button:focus-visible { outline: 6px solid var(--gold); outline-offset: 2px; }
+  button.green { background: var(--grass); box-shadow: inset -6px -6px 0 var(--grass-dark), inset 6px 6px 0 #7fbf5a; }
+  button.red { background: var(--red); box-shadow: inset -6px -6px 0 #8a2a1c, inset 6px 6px 0 #e06a55; }
+  .icon { font-size: 1.6em; vertical-align: middle; margin-right: 10px; text-shadow: none; }
+
+  nav { display: flex; gap: 12px; padding: 12px; justify-content: center; }
+  nav button { flex: 1; max-width: 280px; }
+  nav button[aria-current="page"] { outline: 6px solid var(--gold); }
+
+  main { flex: 1; display: flex; padding: 0 24px 24px; min-height: 0; }
+  section { flex: 1; display: none; flex-direction: column; gap: 20px; padding: 28px; overflow: auto; }
+  section.active { display: flex; }
+  h1 { margin: 0; font-size: 40px; text-shadow: 4px 4px 0 var(--ink); }
+
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  li { display: flex; align-items: center; gap: 16px; padding: 14px 18px; background: rgba(0,0,0,.25); border: 3px solid var(--ink); }
+  #start ul { grid-template-columns: 1fr 1fr; }
+  li .state, li button { margin-left: auto; flex: none; }
+  li .state { font-size: 1.4em; }
+  li button { min-height: 64px; padding: 8px 18px; }
+  .info small { display: block; font-size: 17px; font-weight: 600; }
+  details { font-size: 16px; font-weight: 400; margin-top: 6px; user-select: text; }
+  summary { cursor: pointer; font-weight: 700; }
+
+  .bubble { background: #fff; color: var(--ink); padding: 20px 24px; border: 4px solid var(--ink); max-width: 80%; }
+  .bubble.me { align-self: flex-end; background: var(--gold); }
+  .talk { flex: 1; display: flex; flex-direction: column; gap: 14px; overflow: auto; }
+  #speak { align-self: center; width: 240px; height: 240px; border-radius: 0; font-size: 34px; }
+  #speak .icon { display: block; font-size: 80px; margin: 0 0 6px; }
+  .row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .row button { min-width: 260px; }
+</style>
+</head>
+<body>
+  <nav>
+    <button data-go="start"><span class="icon">🧰</span>Start</button>
+    <button data-go="talk"><span class="icon">💬</span>Rozmowa</button>
+    <button data-go="mod"><span class="icon">⛏️</span>Mój mod</button>
+  </nav>
+
+  <main>
+    <!-- Start: kreator narzędzi (T-7, logika w tools.js) -->
+    <section id="start" class="block">
+      <h1>Cześć! Sprawdzam narzędzia</h1>
+      <ul id="tool-list"></ul>
+      <div class="row">
+        <button id="recheck"><span class="icon">🔄</span>Sprawdź jeszcze raz</button>
+        <button class="green" data-go="talk"><span class="icon">▶️</span>Dalej</button>
+      </div>
+    </section>
+
+    <!-- Rozmowa: przycisk „mów” i lektor (logika w T-8, T-10) -->
+    <section id="talk" class="block">
+      <div class="talk">
+        <div class="bubble">🔊 Co dziś zbudujemy?</div>
+        <div class="bubble me">Chcę miecz, który strzela ogniem!</div>
+        <div class="bubble">🔊 Super pomysł! Już robię.</div>
+      </div>
+      <button id="speak" class="green"><span class="icon">🎤</span>Mów</button>
+    </section>
+
+    <!-- Mój mod: co zbudowano, Zagraj, Cofnij (logika w T-9, T-10) -->
+    <section id="mod" class="block">
+      <h1>Mój mod</h1>
+      <ul>
+        <li><span class="icon">🗡️</span>Ognisty miecz</li>
+        <li><span class="icon">🧱</span>Tęczowy blok</li>
+      </ul>
+      <div class="row">
+        <button class="green"><span class="icon">🎮</span>Zagraj</button>
+        <button class="red"><span class="icon">↩️</span>Cofnij</button>
+      </div>
+    </section>
+  </main>
+
+<script>
+  function go(id) {
+    document.querySelectorAll('section').forEach(s => s.classList.toggle('active', s.id === id));
+    document.querySelectorAll('nav button').forEach(b =>
+      b.dataset.go === id ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current'));
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-go]');
+    if (b) go(b.dataset.go);
+  });
+  go('start');
+
+  // Kreator startowy
+  const TOOLS = { minecraft: ['🟩', 'Minecraft'], java: ['☕', 'Java'], fabric: ['🧵', 'Fabric'],
+    claude: ['🤖', 'Claude'], codex: ['🎨', 'Codex'], whisper: ['🎤', 'Słuchanie'] };
+  const installing = new Set();
+  const list = document.getElementById("tool-list");
+
+  function renderTool(t) {
+    const li = document.createElement('li');
+    li.id = 'tool-' + t.id;
+    li.innerHTML = `<span class="icon">${TOOLS[t.id][0]}</span><div class="info">${TOOLS[t.id][1]}<small></small></div>`;
+    li.querySelector('small').textContent = t.text;
+    if (t.fix === 'auto') {
+      const b = document.createElement('button');
+      b.className = 'green';
+      b.textContent = '⬇️ Tak, pobierz';
+      b.onclick = () => install(t.id, li);
+      li.append(b);
+    } else {
+      const state = document.createElement('span');
+      state.className = 'state';
+      state.textContent = t.ok ? '✅' : t.fix === 'adult' ? '🙋' : t.optional ? '➖' : '⏸️';
+      li.append(state);
+    }
+    if (t.adult) {
+      const d = document.createElement('details');
+      d.innerHTML = '<summary>Dla dorosłego</summary>';
+      d.append(t.adult);
+      li.querySelector('.info').append(d);
+    }
+    return li;
+  }
+
+  async function check() {
+    if (!list.children.length)
+      list.replaceChildren(...Object.keys(TOOLS).map(id => renderTool({ id, text: 'Sprawdzam…' })));
+    const results = await window.tools.check();
+    for (const t of results)
+      if (!installing.has(t.id)) document.getElementById('tool-' + t.id).replaceWith(renderTool(t));
+  }
+
+  async function install(id, li) {
+    installing.add(id);
+    li.querySelector('button').disabled = true;
+    li.querySelector('small').textContent = 'Pobieram…';
+    try {
+      await window.tools.install(id);
+      installing.delete(id);
+      check();
+    } catch (e) {
+      installing.delete(id);
+      li.replaceWith(renderTool({ id, fix: 'adult', text: 'Coś nie wyszło. Poproś dorosłego o pomoc.', adult: e.message }));
+    }
+  }
+
+  window.tools.onProgress((id, pct) => {
+    const s = document.querySelector(`#tool-${id} small`);
+    if (s) s.textContent = pct < 100 ? `Pobieram… ${pct}%` : 'Instaluję…';
+  });
+  document.getElementById('recheck').onclick = check;
+  check();
+</script>
+</body>
+</html>
