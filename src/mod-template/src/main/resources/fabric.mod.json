@@ -1,0 +1,17 @@
+{
+	"schemaVersion": 1,
+	"id": "modkreator_mod",
+	"version": "${version}",
+	"name": "Mój mod",
+	"description": "Mod zrobiony w ModKreatorze",
+	"environment": "*",
+	"entrypoints": {
+		"main": ["pl.modkreator.mod.ModKreatorMod"]
+	},
+	"depends": {
+		"fabricloader": ">=@LOADER@",
+		"minecraft": "~@MC@",
+		"java": ">=@JAVA@",
+		"fabric-api": "*"
+	}
+}

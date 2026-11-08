@@ -5,6 +5,11 @@ const tools = require('./tools');
 ipcMain.handle('tools:check', () => tools.checkAll());
 ipcMain.handle('tools:install', (e, id) => tools.install(id, pct => e.sender.send('tools:progress', id, pct)));
 
+// Mod dziecka (T-9)
+const mod = require('./mod');
+const modSay = e => (text, detail) => e.sender.send('mod:progress', text, detail);
+for (const step of ['create', 'build', 'install', 'play']) ipcMain.handle(`mod:${step}`, e => mod[step](modSay(e)));
+
 app.whenReady().then(() => {
   const win = new BrowserWindow({
     width: 1100,

@@ -1,0 +1,32 @@
+plugins {
+	id '@LOOM_PLUGIN@' version "${loom_version}"
+}
+
+base {
+	archivesName = 'modkreator_mod'
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	@MAPPINGS@
+	@IMPL@ "net.fabricmc:fabric-loader:${project.loader_version}"
+	@IMPL@ "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = project.java_version as int
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	sourceCompatibility = JavaVersion.toVersion(project.java_version)
+	targetCompatibility = JavaVersion.toVersion(project.java_version)
+}

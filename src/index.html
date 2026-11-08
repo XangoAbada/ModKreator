@@ -55,6 +55,7 @@
   .info small { display: block; font-size: 17px; font-weight: 600; }
   details { font-size: 16px; font-weight: 400; margin-top: 6px; user-select: text; }
   summary { cursor: pointer; font-weight: 700; }
+  #mod-status pre { white-space: pre-wrap; max-height: 240px; overflow: auto; }
 
   .bubble { background: #fff; color: var(--ink); padding: 20px 24px; border: 4px solid var(--ink); max-width: 80%; }
   .bubble.me { align-self: flex-end; background: var(--gold); }
@@ -100,8 +101,9 @@
         <li><span class="icon">🗡️</span>Ognisty miecz</li>
         <li><span class="icon">🧱</span>Tęczowy blok</li>
       </ul>
+      <div id="mod-status" class="info"></div>
       <div class="row">
-        <button class="green"><span class="icon">🎮</span>Zagraj</button>
+        <button id="play" class="green"><span class="icon">🎮</span>Zagraj</button>
         <button class="red"><span class="icon">↩️</span>Cofnij</button>
       </div>
     </section>
@@ -179,6 +181,29 @@
   });
   document.getElementById('recheck').onclick = check;
   check();
+
+  // Mój mod (T-9): Zagraj = utwórz mod (raz), zbuduj, zainstaluj, otwórz launcher
+  const playBtn = document.getElementById('play');
+  const modStatus = document.getElementById('mod-status');
+  const setModStatus = (text, detail) => {
+    modStatus.textContent = text;
+    if (detail) modStatus.append(Object.assign(document.createElement('small'), { textContent: detail }));
+  };
+  window.mod.onProgress(setModStatus);
+  playBtn.onclick = async () => {
+    playBtn.disabled = true;
+    try {
+      for (const step of ['create', 'build', 'install', 'play']) await window.mod[step]();
+      setModStatus('Minecraft się otwiera. Kliknij w nim „Graj”!');
+    } catch (e) {
+      setModStatus('Coś nie wyszło. Poproś dorosłego o pomoc.');
+      const d = document.createElement('details');
+      d.innerHTML = '<summary>Dla dorosłego</summary>';
+      d.append(Object.assign(document.createElement('pre'), { textContent: e.message }));
+      modStatus.append(d);
+    }
+    playBtn.disabled = false;
+  };
 </script>
 </body>
 </html>
