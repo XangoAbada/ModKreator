@@ -15,9 +15,15 @@ const LAUNCHER_EXES = [
   'C:\\XboxGames\\Minecraft Launcher\\Content\\Minecraft.exe',
 ];
 const CLAUDE_EXE = path.join(HOME, '.local', 'bin', 'claude.exe'); // natywny instalator; PATH aplikacji może być stary
-const WHISPER_URL = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin'; // small: sensowny polski, ~470 MB
 const GRADLE_JDK = 25; // ponytail: Loom 1.19 (szablon moda, T-9) wymaga JDK 25 do Gradle także dla starszych gier; podbić, gdy Loom podbije
-const WHISPER_BIN_URL = 'https://github.com/ggml-org/whisper.cpp/releases/download/b5454/whisper-bin-x64.zip'; // whisper-cli.exe (CPU) + dll
+const WHISPER_REL = 'https://github.com/ggml-org/whisper.cpp/releases/download/b5454/';
+const WHISPER_HF = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/';
+// Bez karty: CPU + small (~470 MB). Z NVIDIA: build CUDA 12.4 (~690 MB, ma cudart/cublas; sm_50..sm_90, RTX 2060 = sm_75) + large-v3-turbo q8_0 (~870 MB).
+// Zip CUDA 11.8 odpada: brak cublas64_11.dll, whisper po cichu liczy na CPU.
+const WHISPER = {
+  cpu: { zip: 'whisper-bin-x64.zip', dir: '', model: 'ggml-small.bin' },
+  cuda: { zip: 'whisper-bin-win-cuda-12.4.0-x64.zip', dir: 'cuda', model: 'ggml-large-v3-turbo-q8_0.bin' },
+};
 
 const dataDir = () => require('electron').app.getPath('userData');
 const configPath = () => path.join(dataDir(), 'config.json');
@@ -163,13 +169,22 @@ async function checkCodex() {
       `Otwórz PowerShell, wpisz: codex login i zaloguj się kontem ChatGPT. ${AGAIN}`));
 }
 
-const whisperPaths = () => ({
-  model: path.join(dataDir(), 'whisper', 'ggml-small.bin'),
-  cli: path.join(dataDir(), 'whisper', 'Release', 'whisper-cli.exe'),
-});
+const hasNvidia = async () => (await run('nvidia-smi -L')).ok; // nvidia-smi instaluje się ze sterownikiem karty
+
+// Wariant whisper.cpp: pliki do pobrania i ścieżki w folderze danych (`root`).
+function whisperVariant(gpu, root = path.join(dataDir(), 'whisper')) {
+  const v = WHISPER[gpu ? 'cuda' : 'cpu'];
+  return {
+    id: gpu ? 'cuda' : 'cpu',
+    binUrl: WHISPER_REL + v.zip, modelUrl: WHISPER_HF + v.model,
+    model: path.join(root, v.model),
+    cli: path.join(root, v.dir, 'Release', 'whisper-cli.exe'),
+  };
+}
 
 async function checkWhisper() {
-  const { model, cli } = whisperPaths();
+  const { id, model, cli } = whisperVariant(await hasNvidia());
+  saveConfig({ whisperVariant: id });
   if (fs.existsSync(model) && fs.existsSync(cli)) { saveConfig({ whisperModel: model, whisperCli: cli }); return ok('whisper', 'Jest!'); }
   return auto('whisper', 'Brakuje słuchania. Pobrać?');
 }
@@ -206,10 +221,10 @@ const installers = {
     if (!r.ok) throw new Error(r.out);
   },
   async whisper(progress) {
-    const { model, cli } = whisperPaths();
+    const { binUrl, modelUrl, model, cli } = whisperVariant(readConfig().whisperVariant === 'cuda');
     if (!fs.existsSync(cli)) {
       const zip = path.join(os.tmpdir(), 'modkreator-whisper.zip');
-      await download(WHISPER_BIN_URL, zip, progress);
+      await download(binUrl, zip, progress);
       const dir = path.dirname(path.dirname(cli)); // zip ma w środku folder Release/
       fs.mkdirSync(dir, { recursive: true });
       const tar = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'tar.exe');
@@ -217,7 +232,7 @@ const installers = {
       fs.rmSync(zip, { force: true });
       if (!r.ok) throw new Error(r.out);
     }
-    if (!fs.existsSync(model)) await download(WHISPER_URL, model, progress);
+    if (!fs.existsSync(model)) await download(modelUrl, model, progress);
   },
 };
 
@@ -226,4 +241,4 @@ async function install(id, progress) {
   await installers[id](progress);
 }
 
-module.exports = { checkAll, install, readConfig, minecraftVersions, jdkMajor, pickJdk, download, run };
+module.exports = { checkAll, install, readConfig, minecraftVersions, jdkMajor, pickJdk, whisperVariant, download, run };

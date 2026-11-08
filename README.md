@@ -24,7 +24,7 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 - `src/main.js` – proces główny, otwiera okno.
 - `src/index.html` – trzy ekrany (Start, Rozmowa, Mój mod) i nawigacja między nimi.
 - `src/preload.js` – most `window.tools` (check/install/onProgress) do procesu głównego.
-- `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), whisper.cpp (whisper-cli + model small); doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
+- `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), whisper.cpp (z kartą NVIDIA – wykrytą przez `nvidia-smi` – build CUDA 12.4 + model large-v3-turbo q8_0; bez karty build CPU + model small); doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
 - `src/voice.js` – słuchanie w procesie głównym: próbki 16 kHz → WAV → `whisper-cli -l pl` → tekst.
 - `src/talk.js` – ekran Rozmowa w rendererze: lektor i przycisk „Mów”.
 
@@ -46,7 +46,7 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 ## Konfiguracja wykryta przy starcie
 
 Kreator zapisuje `%APPDATA%\ModKreator\config.json` (dla szablonu moda, T-9):
-`minecraftDir`, `minecraftVersion` (najnowsze zainstalowane wydanie), `launcherExe`/`launcherAppx`, `javaVersion` (wymagana przez tę wersję gry), `javaHome` (JDK do Gradle; co najmniej 25, bo wymaga tego Loom 1.19, także dla starszych wersji gry), `fabricVersionId` (profil Fabric w launcherze), `whisperModel`, `whisperCli`.
+`minecraftDir`, `minecraftVersion` (najnowsze zainstalowane wydanie), `launcherExe`/`launcherAppx`, `javaVersion` (wymagana przez tę wersję gry), `javaHome` (JDK do Gradle; co najmniej 25, bo wymaga tego Loom 1.19, także dla starszych wersji gry), `fabricVersionId` (profil Fabric w launcherze), `whisperVariant` (`cuda` albo `cpu`), `whisperModel`, `whisperCli`.
 Czytaj przez `require('./tools').readConfig()`.
 
 ## Test
