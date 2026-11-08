@@ -24,16 +24,25 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 - `src/main.js` – proces główny, otwiera okno.
 - `src/index.html` – trzy ekrany (Start, Rozmowa, Mój mod) i nawigacja między nimi.
 - `src/preload.js` – most `window.tools` (check/install/onProgress) do procesu głównego.
-- `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), model whisper.cpp; doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
+- `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), whisper.cpp (whisper-cli + model small); doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
+- `src/voice.js` – słuchanie w procesie głównym: próbki 16 kHz → WAV → `whisper-cli -l pl` → tekst.
+- `src/talk.js` – ekran Rozmowa w rendererze: lektor i przycisk „Mów”.
+
+## Głos
+
+- Lektor: `speechSynthesis` z polskim głosem Windows (Paulina/Adam). Czyta odpowiedzi w rozmowie, powitanie i braki na ekranie Start.
+- „Mów”: klik zaczyna nagrywanie (maks. 30 s), drugi klik kończy. Nagranie idzie do whisper.cpp lokalnie, bez internetu, a rozpoznany tekst pokazuje się w rozmowie.
+- Do użycia przez T-10/T-13 w rendererze: `ask(tekst)` (prośba dziecka do rozmowy; na razie odpowiada echem) i `say(tekst)` (odpowiedź aplikacji: dymek + lektor). Z preloadu: `window.voice.transcribe(Float32Array)`.
 
 ## Konfiguracja wykryta przy starcie
 
 Kreator zapisuje `%APPDATA%\ModKreator\config.json` (dla szablonu moda, T-9):
-`minecraftDir`, `minecraftVersion` (najnowsze zainstalowane wydanie), `launcherExe`/`launcherAppx`, `javaVersion` (wymagana przez tę wersję gry), `javaHome` (JDK do Gradle), `fabricVersionId` (profil Fabric w launcherze), `whisperModel`.
+`minecraftDir`, `minecraftVersion` (najnowsze zainstalowane wydanie), `launcherExe`/`launcherAppx`, `javaVersion` (wymagana przez tę wersję gry), `javaHome` (JDK do Gradle), `fabricVersionId` (profil Fabric w launcherze), `whisperModel`, `whisperCli`.
 Czytaj przez `require('./tools').readConfig()`.
 
 ## Test
 
 ```
 node test/tools.check.js
+node test/voice.check.js
 ```
