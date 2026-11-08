@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { minecraftVersions, jdkMajor, pickJdk } = require('../src/tools');
+const { minecraftVersions, jdkMajor, pickJdk, whisperVariant } = require('../src/tools');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-'));
 const ver = (id, json) => {
@@ -30,6 +30,16 @@ assert.strictEqual(jdkMajor(jre21), 0);
 assert.strictEqual(pickJdk([j8, j25, j21, jre21], 21), j21);
 assert.strictEqual(pickJdk([j8, j21, j25], 25), j25);
 assert.strictEqual(pickJdk([j8, jre21], 21), null);
+
+const cpu = whisperVariant(false, 'W'), gpu = whisperVariant(true, 'W');
+assert.strictEqual(cpu.id, 'cpu');
+assert.match(cpu.binUrl, /whisper-bin-x64\.zip$/);
+assert.match(cpu.modelUrl, /ggml-small\.bin$/);
+assert.strictEqual(cpu.cli, path.join('W', 'Release', 'whisper-cli.exe')); // jak przed T-88: stare instalacje dalej pasują
+assert.strictEqual(gpu.id, 'cuda');
+assert.match(gpu.binUrl, /whisper-bin-win-cuda-12\.4\.0-x64\.zip$/);
+assert.match(gpu.modelUrl, /ggml-large-v3-turbo/);
+assert.strictEqual(gpu.cli, path.join('W', 'cuda', 'Release', 'whisper-cli.exe'));
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('ok');

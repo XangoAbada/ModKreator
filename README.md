@@ -24,7 +24,7 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 - `src/main.js` – proces główny, otwiera okno.
 - `src/index.html` – trzy ekrany (Start, Rozmowa, Mój mod) i nawigacja między nimi.
 - `src/preload.js` – mosty do procesu głównego: `window.tools` (check/install/onProgress), `window.mod`, `window.voice` (transcribe/speak).
-- `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), whisper.cpp (whisper-cli + model small), Piper (opcjonalny lektor: piper.exe + głos mc_speech); doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
+- `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), whisper.cpp (z kartą NVIDIA – wykrytą przez `nvidia-smi` – build CUDA 12.4 + model large-v3-turbo q8_0; bez karty build CPU + model small), Piper (opcjonalny lektor: piper.exe + głos mc_speech); doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
 - `src/voice.js` – słuchanie w procesie głównym: próbki 16 kHz → WAV → `whisper-cli -l pl` → tekst; lektor: tekst przez stdin → `piper.exe --model … --output_file …` → WAV.
 - `src/talk.js` – ekran Rozmowa w rendererze: lektor (`speak()`: WAV z Pipera przez AudioContext, zapas `speechSynthesis`) i przycisk „Mów”.
 
@@ -47,7 +47,7 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 ## Konfiguracja wykryta przy starcie
 
 Kreator zapisuje `%APPDATA%\ModKreator\config.json` (dla szablonu moda, T-9):
-`minecraftDir`, `minecraftVersion` (najnowsze zainstalowane wydanie), `launcherExe`/`launcherAppx`, `javaVersion` (wymagana przez tę wersję gry), `javaHome` (JDK do Gradle; co najmniej 25, bo wymaga tego Loom 1.19, także dla starszych wersji gry), `fabricVersionId` (profil Fabric w launcherze), `whisperModel`, `whisperCli`, `piperExe`, `piperVoice` (null, gdy brak Pipera).
+`minecraftDir`, `minecraftVersion` (najnowsze zainstalowane wydanie), `launcherExe`/`launcherAppx`, `javaVersion` (wymagana przez tę wersję gry), `javaHome` (JDK do Gradle; co najmniej 25, bo wymaga tego Loom 1.19, także dla starszych wersji gry), `fabricVersionId` (profil Fabric w launcherze), `whisperVariant` (`cuda` albo `cpu`), `whisperModel`, `whisperCli`, `piperExe`, `piperVoice` (null, gdy brak Pipera).
 Czytaj przez `require('./tools').readConfig()`.
 
 ## Test
