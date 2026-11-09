@@ -25,8 +25,24 @@ function stopSpeaking() {
   playing = null;
 }
 
+// Przełącznik „Lektor wł./wył.” (T-13): wyłączony = speak() milczy, dymki zostają. Wybór pamiętany między uruchomieniami.
+const lektorBtn = document.getElementById('lektor');
+let lektorOn = localStorage.getItem('lektor') !== 'off';
+function setLektor(on) {
+  lektorOn = on;
+  localStorage.setItem('lektor', on ? 'on' : 'off');
+  lektorBtn.setAttribute('aria-pressed', on);
+  lektorBtn.innerHTML = on ? '<span class="icon">🔊</span>Lektor wł.' : '<span class="icon">🔇</span>Lektor wył.';
+}
+setLektor(lektorOn);
+lektorBtn.onclick = () => {
+  setLektor(!lektorOn);
+  lektorOn ? speak('Lektor włączony.') : stopSpeaking();
+};
+
 async function speak(text) {
   stopSpeaking();
+  if (!lektorOn) return;
   const id = speechId;
   try {
     const wav = await window.voice.speak(text); // null bez Pipera → catch → głos systemowy
