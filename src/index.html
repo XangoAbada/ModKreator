@@ -64,6 +64,13 @@
   #speak .icon { display: block; font-size: 80px; margin: 0 0 6px; }
   .row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
   .row button { min-width: 260px; }
+  #write { display: flex; gap: 12px; }
+  #write input {
+    flex: 1; min-width: 0; font: inherit; color: var(--ink); padding: 0 20px; min-height: 88px;
+    background: #fff; border: 4px solid var(--ink); user-select: text;
+  }
+  #write input:focus-visible { outline: 6px solid var(--gold); outline-offset: 2px; }
+  #no-mic { margin: 0; text-align: center; text-shadow: 3px 3px 0 var(--ink); }
 </style>
 </head>
 <body>
@@ -71,6 +78,7 @@
     <button data-go="start"><span class="icon">🧰</span>Start</button>
     <button data-go="talk"><span class="icon">💬</span>Rozmowa</button>
     <button data-go="mod"><span class="icon">⛏️</span>Mój mod</button>
+    <button id="lektor" aria-pressed="true"><span class="icon">🔊</span>Lektor wł.</button>
   </nav>
 
   <main>
@@ -84,12 +92,17 @@
       </div>
     </section>
 
-    <!-- Rozmowa: przycisk „mów” i lektor (logika w talk.js, T-10) -->
+    <!-- Rozmowa: przycisk „mów”, pisanie (T-13) i lektor (logika w talk.js, T-10) -->
     <section id="talk" class="block">
       <div class="talk">
         <div class="bubble">🔊 Co dziś zbudujemy?</div>
       </div>
       <button id="speak" class="green"><span class="icon">🎤</span>Mów</button>
+      <p id="no-mic" hidden>🎤❌ Nie widzę mikrofonu. Napisz, co chcesz zbudować!</p>
+      <form id="write">
+        <input id="write-text" aria-label="Napisz, co chcesz zbudować" placeholder="✏️ Napisz, co chcesz zbudować…" autocomplete="off" maxlength="500">
+        <button class="green"><span class="icon">📨</span>Wyślij</button>
+      </form>
     </section>
 
     <!-- Mój mod: co zbudowano, Zagraj, Cofnij (logika w T-9, T-10) -->
