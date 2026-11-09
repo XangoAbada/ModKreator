@@ -9,4 +9,4 @@ pluginManagement {
 	}
 }
 
-rootProject.name = 'modkreator_mod'
+rootProject.name = '@MOD_ID@'

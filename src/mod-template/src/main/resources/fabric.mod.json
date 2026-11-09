@@ -1,12 +1,13 @@
 {
 	"schemaVersion": 1,
-	"id": "modkreator_mod",
+	"id": "@MOD_ID@",
 	"version": "${version}",
-	"name": "Mój mod",
+	"name": "@NAME@",
 	"description": "Mod zrobiony w ModKreatorze",
 	"environment": "*",
 	"entrypoints": {
-		"main": ["pl.modkreator.mod.ModKreatorMod"]
+		"main": ["@PACKAGE@.ModKreatorMod"],
+		"client": ["@PACKAGE@.client.ModKreatorModClient"]
 	},
 	"depends": {
 		"fabricloader": ">=@LOADER@",

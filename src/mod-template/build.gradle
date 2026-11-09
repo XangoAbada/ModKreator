@@ -3,7 +3,19 @@ plugins {
 }
 
 base {
-	archivesName = 'modkreator_mod'
+	archivesName = '@MOD_ID@'
+}
+
+// Jak w sprawdzonym modzie „komputery”: kod wspólny w src/main, ekrany i rysowanie (tylko klient) w src/client.
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		"@MOD_ID@" {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
 }
 
 dependencies {
@@ -27,6 +39,7 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 java {
+	withSourcesJar()
 	sourceCompatibility = JavaVersion.toVersion(project.java_version)
 	targetCompatibility = JavaVersion.toVersion(project.java_version)
 }

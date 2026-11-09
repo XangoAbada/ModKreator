@@ -94,6 +94,14 @@ async function jdkCandidates() {
   homes.push(...sub(path.join(dataDir(), 'jdk')));
   for (const vendor of ['Eclipse Adoptium', 'Microsoft', 'Java', 'Zulu', 'Amazon Corretto', 'BellSoft'])
     homes.push(...sub(path.join(process.env.ProgramFiles || 'C:\\Program Files', vendor)));
+  // Launcher Minecrafta ma własne pełne JDK (z javac), np. java-runtime-epsilon = Java 25 – tym zbudowano mod „komputery”.
+  const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const runtimes = [path.join(MC_DIR, 'runtime'),
+    path.join(process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)', 'Minecraft Launcher', 'runtime'),
+    ...sub(path.join(local, 'Packages')).filter(p => path.basename(p).startsWith(`${LAUNCHER_APPX}_`))
+      .map(p => path.join(p, 'LocalCache', 'Local', 'runtime'))];
+  for (const r of runtimes)
+    for (const rt of sub(r)) homes.push(path.join(rt, 'windows-x64', path.basename(rt)));
   const where = await run('where java');
   if (where.ok) homes.push(...where.out.split(/\r?\n/).map(p => path.dirname(path.dirname(p))));
   return homes.filter(Boolean);
