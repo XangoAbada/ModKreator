@@ -1,8 +1,10 @@
 // Rozmowa (T-8), w rendererze: lektor i przycisk „Mów”.
 // speak(text) – czyta na głos: Piper (głos mc_speech), a bez niego polski głos Windows (np. Paulina).
-// say(text) – odpowiedź aplikacji: dymek + lektor. ask(text) – prośba dziecka (z głosu, później z czatu T-13).
+// say(text) – odpowiedź aplikacji: dymek + lektor. ask(text) – prośba dziecka (z głosu albo z pisania, T-13).
 const talkList = document.querySelector('#talk .talk');
 const speakBtn = document.getElementById('speak');
+const writeForm = document.getElementById('write');
+const writeText = document.getElementById('write-text');
 
 // Zapas, gdy Piper niedostępny lub zawiedzie: głos systemowy Windows.
 // ponytail: bez fallbacku przez PowerShell – Chromium na Windows i tak bierze głosy SAPI (te same co System.Speech)
@@ -54,13 +56,34 @@ function say(text) { bubble(text); speak(text); }
 async function ask(text) {
   bubble(text, true);
   setSpeakBtn('⏳', 'Buduję…', true);
+  writeForm.querySelector('button').disabled = true; // jedna prośba naraz
   try { say(await window.mod.change(text)); }
   catch (e) {
     console.error(e);
     say('Coś nie wyszło. Poproś dorosłego o pomoc.');
   }
   setSpeakBtn('🎤', 'Mów');
+  writeForm.querySelector('button').disabled = false;
 }
+
+// Pisanie (T-13): „Wyślij” albo Enter (submit formularza) → ta sama ask(), co rozpoznany głos.
+writeForm.onsubmit = e => {
+  e.preventDefault();
+  const text = writeText.value.trim();
+  if (!text || writeForm.querySelector('button').disabled) return;
+  writeText.value = '';
+  stopSpeaking();
+  ask(text);
+};
+
+// Bez mikrofonu: chowamy „Mów”, pisanie jest domyślne. devicechange łapie podłączenie/odłączenie w trakcie.
+async function checkMic() {
+  const hasMic = (await navigator.mediaDevices.enumerateDevices()).some(d => d.kind === 'audioinput');
+  speakBtn.hidden = !hasMic;
+  document.getElementById('no-mic').hidden = hasMic;
+}
+navigator.mediaDevices.addEventListener('devicechange', checkMic);
+checkMic();
 
 function setSpeakBtn(icon, label, disabled = false) {
   speakBtn.innerHTML = `<span class="icon">${icon}</span>${label}`;

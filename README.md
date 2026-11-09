@@ -26,7 +26,7 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 - `src/preload.js` – mosty do procesu głównego: `window.tools` (check/install/onProgress), `window.mod` (create/build/install/play/change/undo/onProgress), `window.voice` (transcribe/speak).
 - `src/tools.js` – kreator startowy: sprawdza Minecrafta (+launcher, wersje), JDK, Fabric (+profil), Claude Code (+logowanie), Codex (opcjonalny), whisper.cpp (z kartą NVIDIA – wykrytą przez `nvidia-smi` – build CUDA 12.4 + model large-v3-turbo q8_0; bez karty build CPU + model small), Piper (opcjonalny lektor: piper.exe + głos mc_speech); doinstalowuje brakujące albo podaje instrukcję dla dorosłego.
 - `src/voice.js` – słuchanie w procesie głównym: próbki 16 kHz → WAV → `whisper-cli -l pl` → tekst; lektor: tekst przez stdin → `piper.exe --model … --output_file …` → WAV.
-- `src/talk.js` – ekran Rozmowa w rendererze: lektor (`speak()`: WAV z Pipera przez AudioContext, zapas `speechSynthesis`) i przycisk „Mów”; prośba dziecka idzie do `window.mod.change`.
+- `src/talk.js` – ekran Rozmowa w rendererze: lektor (`speak()`: WAV z Pipera przez AudioContext, zapas `speechSynthesis`) i przycisk „Mów”, pole do pisania z „Wyślij”/Enter (T-13; bez mikrofonu „Mów” jest ukryty); prośba dziecka idzie do `window.mod.change`.
 - `src/mod.js` (+ `src/mod-template/`) – mod dziecka: szablon Fabric, build, instalacja, „Zagraj”, „Cofnij”.
 - `src/claude.js` – pętla tworzenia: prośba → Claude Code w folderze moda → build z naprawą błędów → commit → instalacja.
 
