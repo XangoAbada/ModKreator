@@ -28,7 +28,8 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 - `src/voice.js` – słuchanie w procesie głównym: próbki 16 kHz → WAV → `whisper-cli -l pl` → tekst; lektor: tekst przez stdin → `piper.exe --model … --output_file …` → WAV.
 - `src/talk.js` – ekran Rozmowa w rendererze: lektor (`speak()`: WAV z Pipera przez AudioContext, zapas `speechSynthesis`) i przycisk „Mów”; prośba dziecka idzie do `window.mod.change`.
 - `src/mod.js` (+ `src/mod-template/`) – mod dziecka: szablon Fabric, build, instalacja, „Zagraj”, „Cofnij”.
-- `src/claude.js` – pętla tworzenia: prośba → Claude Code w folderze moda → build z naprawą błędów → commit → instalacja.
+- `src/claude.js` – pętla tworzenia: prośba → Claude Code w folderze moda → tekstury → build z naprawą błędów → commit → instalacja.
+- `src/textures.js` – tekstury pixel-art 16x16 od Codexa dla nowych przedmiotów i bloków.
 
 ## Głos
 
@@ -56,6 +57,15 @@ Wynik: `dist/ModKreator 0.1.0.exe` (przenośny plik, uruchamia się bez instalac
 - „Cofnij” (`window.mod.undo`) – `git reset --hard HEAD~1` (pierwszego commita „Nowy mod” nie rusza), build, instalacja.
 - Wszystkie operacje na modzie (`mod:*`) idą w procesie głównym po kolei, jedna kolejka.
 
+## Tekstury (T-11)
+
+`src/textures.js`, wołane z pętli tworzenia po zmianie Claude'a, przed buildem:
+
+- Claude nie rysuje PNG: w modelu nowego przedmiotu/bloku wpisuje podobną teksturę z Minecrafta (np. `minecraft:item/diamond_sword`).
+- Każdy nowy (nieśledzony w gicie) model w `models/item|block/` z teksturą spoza moda dostaje własny obrazek: `codex exec` (prompt przez stdin, folder tymczasowy, logowanie ChatGPT, bez klucza API) generuje duży pixel-art (~1254 px, ok. 45 s); przedmioty na magentowym tle, bloki jako kafelek bez tła. Wszystkie obrazki naraz.
+- Zmniejszanie w czystym Node (zlib, bez bibliotek): siatka 16x16, każde pole bierze kolor większości (bez rozmycia); u przedmiotów (i roślin z `parent` „cross”) pole, w którym ponad połowa to kolor rogu, jest przezroczyste. Wynik: `textures/<item|block>/<id>.png`, a model wskazuje `modkreator_mod:<item|block>/<id>`. Model przedmiotu dla bloku dostaje teksturę bloku, bez drugiego obrazka.
+- Bez Codexa (brak, niezalogowany, limit, błąd): zostaje tekstura z Minecrafta wybrana przez Claude'a – działa od razu i wygląda jak gra, bez kolejnego kodu.
+
 ## Konfiguracja wykryta przy starcie
 
 Kreator zapisuje `%APPDATA%\ModKreator\config.json` (dla szablonu moda, T-9):
@@ -69,4 +79,5 @@ node test/tools.check.js
 node test/mod.check.js
 node test/voice.check.js
 node test/claude.check.js
+node test/textures.check.js          # z prawdziwym Codexem: node test/textures.check.js codex
 ```

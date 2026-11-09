@@ -1,10 +1,11 @@
-// Pętla tworzenia (T-10): prośba dziecka → Claude Code w folderze moda → build (z naprawą błędów) → git commit → instalacja.
+// Pętla tworzenia (T-10): prośba dziecka → Claude Code w folderze moda → tekstury od Codexa (T-11) → build (z naprawą błędów) → git commit → instalacja.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { readConfig } = require('./tools');
 const mod = require('./mod');
+const textures = require('./textures');
 
 const CLAUDE_EXE = path.join(os.homedir(), '.local', 'bin', 'claude.exe'); // natywny instalator (jak w tools.js)
 const MAX_FIXES = 2; // tyle razy Claude dostaje błąd builda do naprawy, potem zmiana jest wycofywana
@@ -19,7 +20,7 @@ Pracujesz w folderze moda: projekt Gradle, id moda modkreator_mod, pakiet pl.mod
 
 Zasady:
 - Rób wszystko sam, o nic nie pytaj. Gdy prośba jest niejasna albo bardzo duża, zrób prostą, fajną wersję, która działa.
-- Możesz dodawać przedmioty, bloki, receptury, efekty i inne rzeczy. Każdy nowy przedmiot i blok ma: rejestrację, model, nazwę po polsku i angielsku (assets/modkreator_mod/lang/pl_pl.json i en_us.json) i miejsce w zakładce trybu kreatywnego. Bez własnej tekstury użyj w modelu podobnej tekstury z Minecrafta (np. minecraft:item/diamond_sword).
+- Możesz dodawać przedmioty, bloki, receptury, efekty i inne rzeczy. Każdy nowy przedmiot i blok ma: rejestrację, model, nazwę po polsku i angielsku (assets/modkreator_mod/lang/pl_pl.json i en_us.json) i miejsce w zakładce trybu kreatywnego. Nie rysuj tekstur (plików PNG): w modelu użyj podobnej tekstury z Minecrafta (model przedmiotu: parent minecraft:item/generated albo minecraft:item/handheld i textures.layer0, np. minecraft:item/diamond_sword; model bloku: np. parent minecraft:block/cube_all i textures.all), a aplikacja sama narysuje nową. Model przedmiotu dla bloku ma tylko parent modkreator_mod:block/<id bloku>.
 - Nie psuj tego, co już jest w modzie. Nie zmieniaj id moda, plików gradlew i gradle/wrapper ani niczego poza tym folderem. Nie rób commitów – robi je aplikacja.
 - Treści przyjazne dzieciom. Gdy prośba nie pasuje dla dziecka, zrób coś podobnego, ale miłego.
 - Po zmianach sprawdź build poleceniem: ${BUILD} (pierwszy build trwa kilka minut, daj mu do 10 minut) i napraw błędy.
@@ -69,13 +70,14 @@ function askClaude(prompt, dir, session) {
 const revert = async dir => { await mod.git(dir, 'reset -q --hard'); await mod.git(dir, 'clean -fdq'); };
 
 // Prośba dziecka → zmiana w modzie. Zwraca krótką odpowiedź dla dziecka (do lektora).
-async function change(request, say = () => {}, { dir, claude = askClaude, build = mod.build, install = mod.install } = {}) {
+async function change(request, say = () => {}, { dir, claude = askClaude, build = mod.build, install = mod.install, paint = textures.paint } = {}) {
   dir = dir || await mod.create(say);
   say('Myślę, jak to zrobić… To może chwilę potrwać.');
   let text, session;
   try {
     ({ text, session } = await claude(askPrompt(request), dir));
     if (!(await mod.git(dir, 'status --porcelain'))) return plain(text); // tylko rozmowa, mod bez zmian
+    await paint(dir, request, say); // T-11: tekstury od Codexa przed buildem, żeby trafiły do .jar
     for (let fix = 0; ; fix++) {
       try { await build(say, dir); break; } catch (e) {
         if (!e.buildLog) throw e; // np. brak Javy – tego Claude nie naprawi
