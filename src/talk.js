@@ -5,6 +5,8 @@ const talkList = document.querySelector('#talk .talk');
 const speakBtn = document.getElementById('speak');
 const writeForm = document.getElementById('write');
 const writeText = document.getElementById('write-text');
+const sendBtn = writeForm.querySelector('button[type=submit]');
+const newModBtn = document.getElementById('new-mod');
 
 // Zapas, gdy Piper niedostępny lub zawiedzie: głos systemowy Windows.
 // ponytail: bez fallbacku przez PowerShell – Chromium na Windows i tak bierze głosy SAPI (te same co System.Speech)
@@ -68,25 +70,52 @@ function bubble(text, me) {
 
 function say(text) { bubble(text); speak(text); }
 
+// „Komputer myśli”: duży, ruchomy dymek w rozmowie na czas pracy (Claude, budowanie, obrazki, kopiowanie do gry).
+// Ikona i tekst idą za postępem z mod:progress, żeby dziecko widziało, że coś się dzieje.
+let thinking = null;
+const PHASES = [[/rysuj/i, '🎨'], [/buduj|poprawiam/i, '🔨'], [/wkładam|pobieram|przygotowuję mody/i, '📦'], [/zakładam nowy mod/i, '✨'], [/./, '🤔']];
+function setThinking(text) {
+  if (!thinking) return;
+  thinking.querySelector('.think-icon').textContent = PHASES.find(([re]) => re.test(text))[1];
+  thinking.querySelector('.think-text').textContent = text;
+}
+function startThinking() {
+  thinking = document.createElement('div');
+  thinking.className = 'bubble thinking';
+  thinking.setAttribute('role', 'status');
+  thinking.innerHTML = '<span class="think-icon"></span><span class="think-text"></span><span class="dots"><i></i><i></i><i></i></span>';
+  setThinking('Myślę…');
+  talkList.append(thinking);
+  talkList.scrollTop = talkList.scrollHeight;
+}
+function stopThinking() { thinking?.remove(); thinking = null; }
+window.mod.onProgress(text => setThinking(text));
+
 // Pętla tworzenia (T-10): prośba idzie do Claude Code, odpowiedź czyta lektor. Postęp mówi mod:progress (index.html).
 async function ask(text) {
   bubble(text, true);
   setSpeakBtn('⏳', 'Buduję…', true);
-  writeForm.querySelector('button').disabled = true; // jedna prośba naraz
-  try { say(await window.mod.change(text)); }
+  sendBtn.disabled = newModBtn.disabled = writeText.disabled = true; // jedna prośba naraz
+  startThinking();
+  let reply;
+  try { reply = await window.mod.change(text); }
   catch (e) {
     console.error(e);
-    say('Coś nie wyszło. Poproś dorosłego o pomoc.');
+    reply = 'Coś nie wyszło. Poproś dorosłego o pomoc.';
   }
+  stopThinking();
+  say(reply);
+  writeText.disabled = false;
   setSpeakBtn('🎤', 'Mów');
-  writeForm.querySelector('button').disabled = false;
+  sendBtn.disabled = newModBtn.disabled = false;
+  refreshMods(); // nazwa moda mogła się zmienić (index.html)
 }
 
 // Pisanie (T-13): „Wyślij” albo Enter (submit formularza) → ta sama ask(), co rozpoznany głos.
 writeForm.onsubmit = e => {
   e.preventDefault();
   const text = writeText.value.trim();
-  if (!text || writeForm.querySelector('button').disabled) return;
+  if (!text || sendBtn.disabled) return;
   writeText.value = '';
   stopSpeaking();
   ask(text);
@@ -101,8 +130,12 @@ async function checkMic() {
 navigator.mediaDevices.addEventListener('devicechange', checkMic);
 checkMic();
 
+// Mikrofon to sama ikonka obok „Wyślij”; opis stanu w podpowiedzi i dla czytnika ekranu.
 function setSpeakBtn(icon, label, disabled = false) {
-  speakBtn.innerHTML = `<span class="icon">${icon}</span>${label}`;
+  speakBtn.innerHTML = `<span class="icon">${icon}</span>`;
+  speakBtn.title = label;
+  speakBtn.setAttribute('aria-label', label);
+  speakBtn.classList.toggle('rec', icon === '⏹️');
   speakBtn.disabled = disabled;
 }
 
@@ -124,7 +157,7 @@ speakBtn.onclick = async () => {
       const audio = await ctx.decodeAudioData(await new Blob(chunks).arrayBuffer());
       ctx.close();
       const text = await window.voice.transcribe(audio.getChannelData(0)); // mikrofon: pierwszy kanał wystarczy
-      text ? await ask(text) : say('Nic nie słychać. Naciśnij „Mów” i powiedz jeszcze raz.');
+      text ? await ask(text) : say('Nic nie słychać. Naciśnij mikrofon i powiedz jeszcze raz.');
     } catch (e) {
       console.error(e);
       say('Nie udało się posłuchać. Poproś dorosłego o pomoc.');
@@ -143,3 +176,43 @@ document.addEventListener('click', e => {
   greeted = true;
   speak(talkList.firstElementChild.textContent.replace('🔊', '').trim());
 });
+
+// Czyści rozmowę i zaczyna od powitania (nowy mod albo przełączenie na inny mod).
+function clearTalk(greeting) {
+  stopSpeaking();
+  talkList.replaceChildren();
+  say(greeting);
+}
+
+// „Nowy mod”: gdy pomysł w bieżącym modzie nie jest zapisany (Claude dopytał i czeka na odpowiedź albo zmiana
+// nie trafiła do moda), najpierw pytamy. Pusty mod nie jest dublowany – czat zaczyna się w nim od nowa.
+const confirmNew = name => new Promise(resolve => {
+  const d = document.createElement('div');
+  d.className = 'bubble ask';
+  d.append(`🔊 Pomysł w „${name}” nie jest jeszcze zapisany. Zacząć nowy mod?`);
+  const yes = Object.assign(document.createElement('button'), { className: 'green', innerHTML: '<span class="icon">➕</span>Tak, nowy mod' });
+  const no = Object.assign(document.createElement('button'), { innerHTML: '<span class="icon">✏️</span>Nie, dokończę' });
+  const done = v => { d.remove(); resolve(v); };
+  yes.onclick = () => done(true);
+  no.onclick = () => done(false);
+  d.append(yes, no);
+  talkList.append(d);
+  talkList.scrollTop = talkList.scrollHeight;
+  speak(`Pomysł w modzie ${name} nie jest jeszcze zapisany. Zacząć nowy mod?`);
+});
+
+newModBtn.onclick = async () => {
+  newModBtn.disabled = sendBtn.disabled = true;
+  try {
+    const st = await window.mod.status();
+    if (!st.saved && !(await confirmNew(st.name || 'Mój mod'))) return say('Dobrze, dokończmy. Co dalej?');
+    if (st.empty) { await window.mod.forget(); clearTalk('Zaczynamy od nowa! Co zbudujemy?'); }
+    else clearTalk(await window.mod.newMod());
+  } catch (e) {
+    console.error(e);
+    say('Nie udało się zacząć nowego moda. Poproś dorosłego o pomoc.');
+  } finally {
+    newModBtn.disabled = sendBtn.disabled = false;
+    refreshMods();
+  }
+};

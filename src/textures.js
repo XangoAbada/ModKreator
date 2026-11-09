@@ -7,7 +7,7 @@ const zlib = require('zlib');
 const { spawn } = require('child_process');
 const mod = require('./mod');
 
-const ASSETS = 'src/main/resources/assets/modkreator_mod';
+const assetsOf = id => `src/main/resources/assets/${id}`;
 const SIZE = 16;
 const KEY = [255, 0, 255]; // tło do wycięcia (magenta), Codex dostaje zakaz używania jej w przedmiocie
 
@@ -117,13 +117,14 @@ async function codexImage(prompt) {
   }
 }
 
-// Nowe (jeszcze nie w gicie) modele z teksturą spoza moda → własna tekstura modkreator_mod:<block|item>/<id>.
+// Nowe (jeszcze nie w gicie) modele z teksturą spoza moda → własna tekstura <id moda>:<block|item>/<id>.
 async function paint(dir, request, say = () => {}, draw = codexImage) {
+  const MOD = mod.modInfo(dir).id, ASSETS = assetsOf(MOD);
   const models = (await mod.git(dir, 'ls-files --others --exclude-standard')).split(/\r?\n/)
     .map(f => new RegExp(`^${ASSETS}/models/(block|item)/([a-z0-9_]+)\\.json$`).exec(f)).filter(Boolean)
     .map(([f, kind, id]) => ({ file: path.join(dir, f), kind, id }))
     .filter(m => { try { m.json = JSON.parse(fs.readFileSync(m.file, 'utf8')); } catch { return false; }
-      return Object.values(m.json.textures || {}).some(t => !String(t).startsWith('modkreator_mod:')); });
+      return Object.values(m.json.textures || {}).some(t => !String(t).startsWith(`${MOD}:`)); });
   if (!models.length) return;
   say('Rysuję obrazki do moda…');
   let lang = {};
@@ -138,17 +139,17 @@ async function paint(dir, request, say = () => {}, draw = codexImage) {
   // ponytail: wszystkie obrazki naraz; kolejka, gdy dziecko poprosi o wiele rzeczy i limit Codexa zacznie odmawiać
   await Promise.all(models.filter(m => !blockItem(m)).map(async m => {
     const cutout = m.kind === 'item' || /cross/.test(m.json.parent); // kwiatki i rośliny też z przezroczystym tłem
-    const name = lang[`${m.kind}.modkreator_mod.${m.id}`] || m.id.replace(/_/g, ' ');
+    const name = lang[`${m.kind}.${MOD}.${m.id}`] || m.id.replace(/_/g, ' ');
     try {
       const png = pixelate(decodePng(await draw(`${describe(`"${name}"`, cutout)} The child who made it asked (in Polish): "${request}".`)), cutout);
       const out = path.join(dir, ASSETS, 'textures', m.kind, `${m.id}.png`);
       fs.mkdirSync(path.dirname(out), { recursive: true });
       fs.writeFileSync(out, png);
-      set(m, `modkreator_mod:${m.kind}/${m.id}`);
+      set(m, `${MOD}:${m.kind}/${m.id}`);
       if (m.kind === 'block') painted.add(m.id);
     } catch (e) { console.error(`Tekstura ${m.id}:`, e); } // zostaje tekstura z Minecrafta
   }));
-  for (const m of models.filter(m => blockItem(m) && painted.has(m.id))) set(m, `modkreator_mod:block/${m.id}`);
+  for (const m of models.filter(m => blockItem(m) && painted.has(m.id))) set(m, `${MOD}:block/${m.id}`);
 }
 
 module.exports = { paint, codexImage, decodePng, encodePng, pixelate };

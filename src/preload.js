@@ -9,11 +9,18 @@ contextBridge.exposeInMainWorld('tools', {
 contextBridge.exposeInMainWorld('mod', {
   create: () => ipcRenderer.invoke('mod:create'),
   build: () => ipcRenderer.invoke('mod:build'),
-  install: () => ipcRenderer.invoke('mod:install'),
-  play: () => ipcRenderer.invoke('mod:play'),
+  install: () => ipcRenderer.invoke('mod:install'), // zaznaczone mody do .minecraft/mods, odznaczone wyłączone
+  play: () => ipcRenderer.invoke('mod:play'), // otwiera launcher z profilem Fabric
   change: text => ipcRenderer.invoke('mod:change', text), // prośba dziecka → zmiana w modzie, wynik: odpowiedź dla lektora
-  undo: () => ipcRenderer.invoke('mod:undo'), // cofa ostatnią zmianę, wynik: odpowiedź dla lektora
-  onProgress: cb => ipcRenderer.on('mod:progress', (_e, text, detail) => cb(text, detail)),
+  list: () => ipcRenderer.invoke('mod:list'), // [{ id, own, name, active, selected, things }] – też mody z folderu mods gry
+  remove: id => ipcRenderer.invoke('mod:remove', id), // do kosza (userData/kosz)
+  activate: id => ipcRenderer.invoke('mod:activate', id), // ten mod zmienia rozmowa
+  select: (id, on) => ipcRenderer.invoke('mod:select', id, on), // zaznaczony = jest w grze
+  status: () => ipcRenderer.invoke('mod:status'), // { name, empty, saved } aktywnego moda
+  newMod: () => ipcRenderer.invoke('mod:new'), // nowy pusty mod, od razu aktywny
+  forget: () => ipcRenderer.invoke('mod:forget'), // zapomnij niedokończoną rozmowę
+  onProgress: cb => ipcRenderer.on('mod:progress', (_e, text, detail, eta) => cb(text, detail, eta)), // eta: sekundy do końca albo undefined
+  onBusy: cb => ipcRenderer.on('mod:busy', (_e, on) => cb(on)), // trwa praca na modach – „Zagraj” niedostępny
 });
 
 contextBridge.exposeInMainWorld('voice', {
